@@ -1,10 +1,10 @@
 # GF(2^8) systolic-array matrix multiplier
 
-An output-stationary SystemVerilog array for matrix multiplication over GF(2^8), using the AES polynomial 0x11B. Arithmetic uses XOR accumulation and shift-and-reduce multiplication without DSP slices. This repository contains the core, a UART wrapper, a Python reference model, and reproducible Vivado tests and builds.
+I built an output-stationary SystemVerilog array for matrix multiplication over GF(2^8), using the AES polynomial 0x11B. The datapath uses XOR accumulation and shift-and-reduce multiplication without DSP slices. I include the core, a UART wrapper, a Python reference model, and reproducible Vivado tests and builds in this repository.
 
 ## Evidence and scope
 
-Historical results are preserved under [evidence/historical](evidence/historical). These reports precede the integration fixes in this checkout; their metrics must not be attributed to the revised sources without rebuilding.
+I preserved my earlier results under [evidence/historical](evidence/historical). These reports describe the RTL before the integration fixes. I keep their metrics separate from the rebuilt results for the current sources.
 
 | Historical build | LUTs | Registers | BRAM tiles | DSPs | Evidence stage |
 |---|---:|---:|---:|---:|---|
@@ -13,13 +13,13 @@ Historical results are preserved under [evidence/historical](evidence/historical
 | N=8 core | 3,453 | 2,899 | 15 | 0 | Out-of-context synthesis |
 | N=16 core | 13,835 | 11,924 | 57 | 0 | Out-of-context synthesis |
 
-The author reports UART board tests at N=4, N=8, and N=16. Historical serial captures are not archived here. The included reports establish synthesis and routed implementation; the regression logs establish simulation correctness. These are separate from physical-board validation.
+I tested the UART system on an FPGA board at N=4, N=8, and N=16. Historical serial captures from those runs are not archived in this repository. I distinguish those board tests from the evidence included here: synthesis and routed implementation reports document the builds, while regression logs document simulation correctness.
 
-The historical N=4 power report estimates 0.078 W on-chip power with Medium confidence and incomplete activity inputs. This is not measured board power. No end-to-end speedup or measured sustained throughput is claimed here. A positive slack at 100 MHz does not constitute an implemented maximum-frequency measurement.
+My historical N=4 power report estimates 0.078 W on-chip power with Medium confidence and incomplete activity inputs. I report this as a Vivado estimate, not measured board power. I do not claim measured end-to-end speedup, sustained throughput or maximum clock frequency from these reports. Positive slack at 100 MHz establishes timing closure at that constraint.
 
-## Repaired complete-system implementation
+## Current complete-system implementation
 
-Fresh Vivado 2024.2 builds target xc7a50tcsg324-1. All three meet the 100 MHz routed internal setup and hold constraints and report zero DRC violations. Reports and source hashes are in [evidence/implementation](evidence/implementation).
+I rebuilt the complete systems in Vivado 2024.2 for xc7a50tcsg324-1. All three meet the 100 MHz routed internal setup and hold constraints and report zero DRC violations. I archived the reports and source hashes in [evidence/implementation](evidence/implementation).
 
 | N | Routed LUTs | Registers | BRAM tiles | DSPs | Setup slack (ns) | Hold slack (ns) |
 |---|---:|---:|---:|---:|---:|---:|
@@ -27,9 +27,9 @@ Fresh Vivado 2024.2 builds target xc7a50tcsg324-1. All three meet the 100 MHz ro
 | 8 | 4,197 | 5,058 | 15 | 0 | +1.563 | +0.024 |
 | 16 | 16,544 | 20,241 | 57 | 0 | +0.863 | +0.022 |
 
-These are new implementation results for the repaired integration, not recovered historical board measurements. Fresh core simulation checks 33,600 output elements; complete UART and burst-pipeline simulations also pass at all three sizes. [Validation logs and hashes](evidence/regression/validation_index.json) distinguish these tests from physical-board captures.
+These are my new implementation results for the revised integration. They do not recover measurements from my earlier board runs. I checked 33,600 output elements in the core regression, and complete UART and burst-pipeline simulations passed at all three sizes. I saved the [validation logs and hashes](evidence/regression/validation_index.json) separately from physical-board captures.
 
-There are no unconstrained internal timing endpoints. External input/output delays are not specified for the asynchronous UART/reset and UART/LED interfaces; the timing claim concerns the internal clocked paths. [Repair notes](evidence/repair_notes.md) explain the changes and remaining evidence boundaries.
+The reports contain no unconstrained internal timing endpoints. I have not specified external input/output delays for the asynchronous UART/reset and UART/LED interfaces, so my timing results concern the internal clocked paths. I explain the changes and evidence limits in the [repair notes](evidence/repair_notes.md).
 
 ## Architecture and protocol
 
@@ -49,11 +49,11 @@ Python 3.8+ and Vivado/XSim are required for simulation; pyserial is needed only
 python scripts/run_regression.py --vivado-bin 'C:\path\to\Vivado\2024.2\bin'
 ```
 
-The runner generates deterministic golden vectors in isolated temporary directories, checks the Python model against AES MixColumns known answers, and tests each N in 4,8,16. Core tests check 100 different matrix pairs without reset and exercise result backpressure. UART tests check three complete matrix transactions without reset, using a shorter simulated baud divisor for speed. Compile errors, mismatches, missing data and timeouts fail the runner. Logs and a source-hash manifest are saved under `build/regression`; use `--outdir` to preserve a separate run.
+I use deterministic golden vectors in isolated temporary directories and check the Python model against AES MixColumns known answers. The runner tests each N in 4,8,16. My core tests check 100 different matrix pairs without reset and exercise result backpressure. My UART tests check three complete matrix transactions without reset, using a shorter simulated baud divisor for speed. Compile errors, mismatches, missing data and timeouts fail the runner. Logs and a source-hash manifest are saved under `build/regression`; use `--outdir` to preserve a separate run.
 
 ## Reproducible implementation
 
-The supplied XDC targets Nexys A7 pins. It is not a Basys 3 constraint file. Confirm the actual board part before programming. All UART matrix dimensions now derive from N; WIDTH=8 and N>=2 are the supported interface configuration.
+I supply an XDC for Nexys A7 pins. Confirm the actual board part before programming; these constraints do not target Basys 3. All UART matrix dimensions derive from N. My supported interface configuration is WIDTH=8 and N>=2.
 
 ```powershell
 vivado -mode batch -source scripts/build_vivado.tcl -tclargs 8 xc7a50tcsg324-1 build/n8_run1
@@ -85,4 +85,4 @@ Use the matching bitstream and N-specific script. The script compares every retu
 - `evidence/`: selected archived reports and validation notes.
 - `constraints/`: Nexys A7 pin and 100 MHz clock constraints.
 
-Undergraduate Computer Engineering capstone, KNUST. No formal security claim is made: this is an arithmetic accelerator, not a masked cryptographic implementation.
+I developed this project for my undergraduate Computer Engineering capstone at KNUST. It is an arithmetic accelerator, not a masked cryptographic implementation, and I do not claim side-channel resistance.
