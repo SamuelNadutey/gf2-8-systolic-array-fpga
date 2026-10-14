@@ -1,203 +1,88 @@
-# Scalable Systolic Array Matrix Multiplier over GF(2⁸) on FPGA
+# GF(2^8) systolic-array matrix multiplier
 
-A parameterizable **output-stationary 2D systolic array** that performs matrix multiplication in the Galois field GF(2⁸) with the AES irreducible polynomial (*x⁸ + x⁴ + x³ + x + 1*). Designed in SystemVerilog, validated on a **Xilinx Artix-7 FPGA** (Basys 3 / Nexys A7) at array sizes N = 4, 8, and 16.
+An output-stationary SystemVerilog array for matrix multiplication over GF(2^8), using the AES polynomial 0x11B. Arithmetic uses XOR accumulation and shift-and-reduce multiplication without DSP slices. This repository contains the core, a UART wrapper, a Python reference model, and reproducible Vivado tests and builds.
 
-> **Capstone Project** — BSc Computer Engineering, Kwame Nkrumah University of Science and Technology (KNUST), 2025–2027.
+## Evidence and scope
 
----
+Historical results are preserved under [evidence/historical](evidence/historical). These reports precede the integration fixes in this checkout; their metrics must not be attributed to the revised sources without rebuilding.
 
-## Key Results
+| Historical build | LUTs | Registers | BRAM tiles | DSPs | Evidence stage |
+|---|---:|---:|---:|---:|---|
+| N=4 complete UART system, 12 October 2026 | 1,134 | 1,537 | 0 | 0 | Placed utilization; routed timing meets 100 MHz |
+| N=4 core | 1,044 | 950 | 0 | 0 | Out-of-context synthesis |
+| N=8 core | 3,453 | 2,899 | 15 | 0 | Out-of-context synthesis |
+| N=16 core | 13,835 | 11,924 | 57 | 0 | Out-of-context synthesis |
 
-| Metric | N = 4 | N = 8 | N = 16 |
-|--------|------:|------:|-------:|
-| LUTs | 1,134 | 3,681 | 14,478 |
-| Flip-Flops | 1,537 | 5,028 | 20,215 |
-| BRAM (36 Kb) | 0 | 15 | 57 |
-| DSP48E1 | 0 | 0 | 0 |
-| F_max (MHz) | 168 | 115 | 118 |
-| Board Clock | 100 MHz | 100 MHz | 100 MHz |
-| Compute Latency | 130 ns | 370 ns | 1.46 µs |
-| Throughput | 492 MMAC/s | 3.94 GMAC/s | 28.1 GMAC/s |
-| Power | 78 mW | — | — |
+The author reports UART board tests at N=4, N=8, and N=16. Historical serial captures are not archived here. The included reports establish synthesis and routed implementation; the regression logs establish simulation correctness. These are separate from physical-board validation.
 
-All three sizes **validated on real hardware** via UART, producing correct GF(2⁸) results verified against a Python golden model.
+The historical N=4 power report estimates 0.078 W on-chip power with Medium confidence and incomplete activity inputs. This is not measured board power. No end-to-end speedup or measured sustained throughput is claimed here. A positive slack at 100 MHz does not constitute an implemented maximum-frequency measurement.
 
----
+## Repaired complete-system implementation
 
-## Architecture
+Fresh Vivado 2024.2 builds target xc7a50tcsg324-1. All three meet the 100 MHz routed internal setup and hold constraints and report zero DRC violations. Reports and source hashes are in [evidence/implementation](evidence/implementation).
 
-```
-  ┌─────────────────────────────────────────────────────────┐
-  │                       fpga_top                          │
-  │                                                         │
-  │  UART RX ─► matrix_accumulator ─► systolic_top ─────┐  │
-  │  (115200)    (byte → matrix)      │                  │  │
-  │                                   ▼                  │  │
-  │                            ┌─────────────┐           │  │
-  │                            │ sync_fifo A │           │  │
-  │                            │ sync_fifo B │           │  │
-  │                            └──────┬──────┘           │  │
-  │                                   ▼                  │  │
-  │                            ┌─────────────┐           │  │
-  │                            │ skew_logic  │           │  │
-  │                            │ (row/col    │           │  │
-  │                            │  skew nets) │           │  │
-  │                            └──────┬──────┘           │  │
-  │                                   ▼                  │  │
-  │                     ┌───────────────────────┐        │  │
-  │                     │   Systolic_array NxN  │        │  │
-  │                     │                       │        │  │
-  │                     │  PE──PE──PE──PE  ───►  │        │  │
-  │                     │  │   │   │   │        │        │  │
-  │                     │  PE──PE──PE──PE        │        │  │
-  │                     │  │   │   │   │        │        │  │
-  │                     │  PE──PE──PE──PE        │        │  │
-  │                     │  │   │   │   │        │        │  │
-  │                     │  PE──PE──PE──PE  ▼     │        │  │
-  │                     └───────────────────────┘        │  │
-  │                                   │                  │  │
-  │                                   ▼                  │  │
-  │                          matrix_serializer ──► UART TX │
-  │                          (matrix → bytes)    (115200)  │
-  └─────────────────────────────────────────────────────────┘
+| N | Routed LUTs | Registers | BRAM tiles | DSPs | Setup slack (ns) | Hold slack (ns) |
+|---|---:|---:|---:|---:|---:|---:|
+| 4 | 1,293 | 1,552 | 0 | 0 | +1.483 | +0.027 |
+| 8 | 4,197 | 5,058 | 15 | 0 | +1.563 | +0.024 |
+| 16 | 16,544 | 20,241 | 57 | 0 | +0.863 | +0.022 |
+
+These are new implementation results for the repaired integration, not recovered historical board measurements. Fresh core simulation checks 33,600 output elements; complete UART and burst-pipeline simulations also pass at all three sizes. [Validation logs and hashes](evidence/regression/validation_index.json) distinguish these tests from physical-board captures.
+
+There are no unconstrained internal timing endpoints. External input/output delays are not specified for the asynchronous UART/reset and UART/LED interfaces; the timing claim concerns the internal clocked paths. [Repair notes](evidence/repair_notes.md) explain the changes and remaining evidence boundaries.
+
+## Architecture and protocol
+
+UART RX -> matrix accumulator -> A/B FIFOs -> skew registers -> N*N processing elements -> result serializer -> UART TX.
+
+Send ASCII `A` (0x41), followed by N*N bytes in row-major order, then ASCII `B` (0x42), followed by N*N bytes in **column-major** order. Read N*N result bytes in row-major order. Payload bytes may contain any value, including command bytes. Default UART is 115200 baud, 8N1 at a 100 MHz clock.
+
+The host must wait for the complete result before sending the next matrix pair. There is no RTS/CTS or packet acknowledgement; an unlimited input stream is not supported. The accumulator retains a completed matrix while its FIFO is full. The core holds a valid result until the serializer can accept it, and the serializer captures the entire result on that handshake.
+
+The core clears accumulators on LOAD and accumulates for 3N-2 SHIFT cycles. With empty input queues and no output stall, the final input enqueue edge to result-valid latency is 3N+1 cycles: 13, 25, and 49 cycles for N=4,8,16 (130, 250, 490 ns at 100 MHz). Queuing, result backpressure, UART transfer and host delays increase system latency. A GF multiply-accumulate means one finite-field product combined by XOR, not a floating-point operation.
+
+## Run reference checks and HDL regression
+
+Python 3.8+ and Vivado/XSim are required for simulation; pyserial is needed only for physical-board tests. Run from the repository root:
+
+```powershell
+python scripts/run_regression.py --vivado-bin 'C:\path\to\Vivado\2024.2\bin'
 ```
 
-### How it works
+The runner generates deterministic golden vectors in isolated temporary directories, checks the Python model against AES MixColumns known answers, and tests each N in 4,8,16. Core tests check 100 different matrix pairs without reset and exercise result backpressure. UART tests check three complete matrix transactions without reset, using a shorter simulated baud divisor for speed. Compile errors, mismatches, missing data and timeouts fail the runner. Logs and a source-hash manifest are saved under `build/regression`; use `--outdir` to preserve a separate run.
 
-1. **Host sends** command byte `'A'` (0x41) followed by N² data bytes (matrix A, row-major), then `'B'` (0x42) followed by N² bytes (matrix B, column-major).
-2. **matrix_accumulator** shifts bytes into a wide register and pushes complete matrices into the input FIFOs.
-3. **systolic_top FSM** pops both matrices, loads the skew shift registers, clears all PE accumulators, then shifts for 3N−2 cycles.
-4. Each **PE** computes `C ^= A_in * B_in` in GF(2⁸) using a combinational shift-and-reduce multiplier — no DSPs needed.
-5. After a one-cycle **DRAIN** state (ensuring the deepest PE has settled), `output_valid` pulses.
-6. **matrix_serializer** reads the N×N result array and transmits it byte-by-byte over UART TX.
+## Reproducible implementation
 
-**Total compute latency:** 3N + 1 clock cycles (POP_WAIT + LOAD + 3N−2 SHIFT + DRAIN).
+The supplied XDC targets Nexys A7 pins. It is not a Basys 3 constraint file. Confirm the actual board part before programming. All UART matrix dimensions now derive from N; WIDTH=8 and N>=2 are the supported interface configuration.
 
----
-
-## Repository Structure
-
-```
-├── rtl/                        # Synthesizable SystemVerilog
-│   ├── fpga_top.sv             # Board-level top (UART + controller + array)
-│   ├── systolic_top.sv         # FSM controller (FIFO, skew, array orchestration)
-│   ├── systolic_array.sv       # NxN PE grid with clear/en broadcast
-│   ├── PE.sv                   # Processing element (GF multiply-accumulate)
-│   ├── GF_multiplier.sv        # Combinational GF(2^8) multiplier
-│   ├── shift_reduce.sv         # Single xtime (multiply by x) stage
-│   ├── skew_logic.sv           # Row/column skew shift register network
-│   ├── shifter.sv              # Parameterized shift register
-│   ├── sync_fifo.sv            # Synchronous FIFO (pointer-based)
-│   ├── matrix_accumulator.sv   # UART byte → matrix assembler
-│   ├── matrix_serializer.sv    # Matrix → UART byte serializer
-│   ├── uart_rx.sv              # UART receiver (with 2-flop synchronizer)
-│   └── uart_tx.sv              # UART transmitter
-│
-├── tb/                         # Simulation testbenches
-│   ├── tb_fpga_top.sv          # Full-chain UART-level test (mirrors host script)
-│   └── tb_systolic_selfcheck.sv # 100-vector self-checking test with golden model
-│
-├── python/                     # Host scripts and reference model
-│   ├── gf_reference_model.py   # GF(2^8) golden model + vector generator
-│   ├── test_accelerator.py     # Board test script (N=4)
-│   ├── test_accelerator_n8.py  # Board test script (N=8)
-│   ├── test_accelerator_n16.py # Board test script (N=16)
-│   └── cpu_benchmark.py        # CPU vs FPGA performance comparison
-│
-├── constraints/
-│   └── nexys_a7.xdc            # Pin constraints (100 MHz, UART, LEDs, reset)
-│
-├── .gitignore
-└── README.md
+```powershell
+vivado -mode batch -source scripts/build_vivado.tcl -tclargs 8 xc7a50tcsg324-1 build/n8_run1
 ```
 
----
+Repeat with N=4 or N=16 and a different output directory. The script synthesizes, places and routes the complete system, exporting utilization, timing, DRC, estimated power and checkpoints. It does not program a board. Preserve each build directory rather than rerunning multiple sizes into the same `impl_1` directory. Timing and DRC reports must be inspected before generating/programming a bitstream. Export the routed checkpoint with:
 
-## Getting Started
-
-### Prerequisites
-
-- **Xilinx Vivado** 2023.1+ (any edition — WebPACK is free)
-- **Python 3.8+** with `pyserial` (`pip install pyserial`)
-- **FPGA board**: Basys 3 (xc7a35t) or Nexys A7 (xc7a50t / xc7a100t)
-
-### Build (Vivado)
-
-1. Create a new project targeting your board's part.
-2. Add all files in `rtl/` as design sources.
-3. Add `constraints/nexys_a7.xdc` as a constraints file.
-4. Add files in `tb/` as simulation sources.
-5. Set `fpga_top` as the top module.
-6. Run Synthesis → Implementation → Generate Bitstream.
-7. Program the FPGA.
-
-### Changing the Array Size
-
-To build for N = 8 or N = 16, change the parameter `N` in `fpga_top.sv`:
-
-```systemverilog
-module fpga_top #(
-    parameter N = 8,          // change to 4, 8, or 16
-    parameter WIDTH = 8,
-    parameter BYTES_PER_MATRIX = N * N,
-    parameter MATRIX_BITS = N * N * WIDTH
-)(
+```powershell
+vivado -mode batch -source scripts/export_bitstream.tcl -tclargs build/n8_run1/routed.dcp build/n8_run1/fpga_top.bit
 ```
 
-Then re-synthesize and use the matching host script (`test_accelerator_n8.py` etc.).
+This generates a local bitstream; program only the matching physical board.
 
-### Run on Hardware
+## Physical-board validation
 
-```bash
-# Install pyserial
-pip install pyserial
-
-# Run the N=4 test (adjust COM port in the script)
-python python/test_accelerator.py
+```powershell
+python -m pip install pyserial
+python python/test_accelerator_n8.py --port COM5 --count 100 --output build/board_n8.json
 ```
 
-Expected output:
-```
-[SUCCESS] Received 16 bytes from Systolic Array!
+Use the matching bitstream and N-specific script. The script compares every returned element with a Python reference, returns a failing exit status on a mismatch or incomplete response, and can save input matrices, expected/observed bytes and UART round-trip times. These timings include the serial link; they are not core compute latency. `test_accelerator.py` defaults to N=4 and `test_accelerator_n16.py` to N=16.
 
---- Output Matrix C (GF(2^8) Arithmetic) ---
-[  16   35   18   63 ]
-[  51   24   28   16 ]
-[  16   10   24    3 ]
-[   8    9   13    9 ]
-```
+## Files
 
-### Simulate
+- `rtl/`: synthesizable arithmetic, control, UART and buffering.
+- `tb/`: core and complete UART self-checking regressions.
+- `python/`: reference model, physical-board tests, illustrative software benchmark.
+- `scripts/`: isolated XSim regression and Vivado implementation flow.
+- `evidence/`: selected archived reports and validation notes.
+- `constraints/`: Nexys A7 pin and 100 MHz clock constraints.
 
-In Vivado, set `tb_fpga_top` as the simulation top and run:
-
-```tcl
-run 6 ms
-```
-
-The testbench prints `RESULT: PASS` if the full UART chain produces the correct golden output.
-
----
-
-## GF(2⁸) Arithmetic
-
-All arithmetic is in GF(2⁸) mod the AES polynomial `P(x) = x⁸ + x⁴ + x³ + x + 1` (0x11B):
-
-- **Addition** = bitwise XOR (no carry propagation)
-- **Multiplication** = shift-and-reduce (the `xtime` operation), implemented as a chain of 8 `shift_reduce` stages feeding partial products that are XORed together
-
-This makes the PE purely combinational with no DSP blocks — ideal for FPGA LUT-based implementation.
-
----
-
-## Performance vs Software
-
-The N = 4 array at 100 MHz computes a 4×4 GF(2⁸) matrix multiply in **130 ns** (13 cycles), compared to ~41 µs for an optimized Python implementation — a **300×+ speedup**. The design uses zero DSP blocks and consumes only 78 mW.
-
-Throughput scales near-linearly with N²: each PE contributes one MAC per cycle during the active phase, yielding N² MACs every 3N+1 cycles.
-
----
-
-## License
-
-This project was developed as an undergraduate capstone at KNUST. Feel free to use and adapt for academic and educational purposes.
+Undergraduate Computer Engineering capstone, KNUST. No formal security claim is made: this is an arithmetic accelerator, not a masked cryptographic implementation.

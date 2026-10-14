@@ -13,7 +13,7 @@ module uart_rx #(
 
     // ---- 2-flop synchronizer for the asynchronous rx line ----
     // Reset/idle to 1 so a reset release never looks like a start bit.
-    logic rx_meta, rx_sync;
+    (* ASYNC_REG = "TRUE" *) logic rx_meta, rx_sync;
     always_ff @(posedge clk or posedge reset) begin
         if (reset) begin
             rx_meta <= 1'b1;
@@ -84,8 +84,10 @@ module uart_rx #(
                     if (clk_count < CLKS_PER_BIT - 1) begin
                         clk_count <= clk_count + 1'b1;
                     end else begin
-                        rx_data <= rx_shift_reg;
-                        rx_ready <= 1'b1; // Pulse ready!
+                        if (rx_sync) begin
+                            rx_data <= rx_shift_reg;
+                            rx_ready <= 1'b1;
+                        end
                         state <= CLEANUP;
                     end
                 end

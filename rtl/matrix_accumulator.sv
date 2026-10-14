@@ -29,15 +29,21 @@ module matrix_accumulator #(
     // Wide enough to hold the value BYTES_PER_MATRIX (with one bit of headroom)
     localparam int CNT_W = $clog2(BYTES_PER_MATRIX + 1);
 
-    typedef enum logic [1:0] {WAIT_CMD, LOAD_A, LOAD_B} state_t;
+    typedef enum logic [1:0] {WAIT_CMD, LOAD_A, LOAD_B, WAIT_PUSH} state_t;
     state_t state;
 
     logic [CNT_W-1:0] byte_count;
     logic [MATRIX_BITS-1:0] shift_buffer;
+    logic pending_b;
+    initial begin
+        if (BYTES_PER_MATRIX < 2 || MATRIX_BITS != BYTES_PER_MATRIX*8)
+            $fatal(1, "Inconsistent UART matrix dimensions");
+    end
 
-    always_ff @(posedge clk or posedge reset) begin
+    always_ff @(posedge clk) begin
         if (reset) begin
             state <= WAIT_CMD;
+            pending_b <= 0;
             byte_count <= '0;
             shift_buffer <= '0;
             push_A <= 0;
@@ -70,8 +76,11 @@ module matrix_accumulator #(
                             if (fifo_ready) begin
                                 matrix_A_out <= {rx_data, shift_buffer[MATRIX_BITS-1:8]};
                                 push_A <= 1;
+                                state <= WAIT_CMD;
+                            end else begin
+                                pending_b <= 0;
+                                state <= WAIT_PUSH;
                             end
-                            state <= WAIT_CMD;
                         end
                     end
                 end
@@ -85,12 +94,25 @@ module matrix_accumulator #(
                             if (fifo_ready) begin
                                 matrix_B_out <= {rx_data, shift_buffer[MATRIX_BITS-1:8]};
                                 push_B <= 1;
+                                state <= WAIT_CMD;
+                            end else begin
+                                pending_b <= 1;
+                                state <= WAIT_PUSH;
                             end
-                            state <= WAIT_CMD;
                         end
                     end
                 end
 
+                WAIT_PUSH: begin
+                    if (fifo_ready) begin
+                        if (pending_b) begin
+                            matrix_B_out <= shift_buffer; push_B <= 1;
+                        end else begin
+                            matrix_A_out <= shift_buffer; push_A <= 1;
+                        end
+                        state <= WAIT_CMD;
+                    end
+                end
                 default: state <= WAIT_CMD;
             endcase
         end

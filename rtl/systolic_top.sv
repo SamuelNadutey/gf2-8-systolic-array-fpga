@@ -22,11 +22,16 @@ module systolic_top #(
     input  logic [MATRIX_BITS-1:0] matrix_B_in,
 
     output logic ready,
+    input logic result_ready = 1'b1,
 
     output logic [WIDTH-1:0] C_out [N-1:0][N-1:0],
     output logic output_valid
 );
 
+    initial begin
+        if (N < 2 || WIDTH != 8 || FIFO_ADDR_WIDTH < 2)
+            $fatal(1, "Core requires N>=2, WIDTH=8, FIFO_ADDR_WIDTH>=2");
+    end
     logic pop_A, pop_B;
     logic empty_A, empty_B;
     logic full_A, full_B;
@@ -66,7 +71,7 @@ module systolic_top #(
         end
     end
 
-    always_ff @(posedge clk or posedge reset) begin
+    always_ff @(posedge clk) begin
         if (reset) begin
             current_state <= IDLE;
             shift_count   <= '0;
@@ -127,7 +132,7 @@ module systolic_top #(
             // the last SHIFT cycle, so C_out is only stable here (F2).
             DRAIN: begin
                 output_valid = 1;
-                next_state   = IDLE;
+                if (result_ready) next_state = IDLE;
             end
 
             default: next_state = IDLE;

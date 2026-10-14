@@ -1,0 +1,5 @@
+N=16
+part=xc7a50tcsg324-1
+Vivado=2024.2
+clock_period_ns=10
+Power is a tool estimate, not a board measurement.

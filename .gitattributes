@@ -1,0 +1,14 @@
+# Preserve tested checkout line endings so SHA-256 manifests survive clones.
+rtl/*.sv text eol=lf
+rtl/fpga_top.sv text eol=crlf
+rtl/matrix_accumulator.sv text eol=crlf
+rtl/matrix_serializer.sv text eol=crlf
+rtl/sync_fifo.sv text eol=crlf
+rtl/systolic_top.sv text eol=crlf
+rtl/uart_rx.sv text eol=crlf
+tb/*.sv text eol=crlf
+python/*.py text eol=crlf
+scripts/*.py text eol=crlf
+scripts/*.tcl text eol=crlf
+constraints/*.xdc text eol=crlf
+evidence/** -text whitespace=cr-at-eol

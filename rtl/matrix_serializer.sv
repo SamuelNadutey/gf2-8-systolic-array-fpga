@@ -10,6 +10,7 @@ module matrix_serializer #(
     // Inputs from Systolic Top
     input  logic [WIDTH-1:0] C_out [N-1:0][N-1:0],
     input  logic output_valid,
+    output logic result_ready,
     
     // Interface to standard UART TX
     input  logic tx_busy,
@@ -17,10 +18,11 @@ module matrix_serializer #(
     output logic tx_start
 );
 
-    typedef enum logic [1:0] {IDLE, LATCH, SEND, WAIT_TX} state_t;
+    typedef enum logic [1:0] {IDLE, SEND, WAIT_TX} state_t;
     state_t state;
+    assign result_ready = (state == IDLE);
 
-    // Flattened buffer to hold the 16 bytes
+    // Flattened buffer to hold N*N bytes
     logic [WIDTH-1:0] data_buffer [0:(N*N)-1];
     logic [$clog2(N*N):0] byte_index;
 
@@ -37,19 +39,11 @@ module matrix_serializer #(
                 IDLE: begin
                     byte_index <= '0;
                     if (output_valid) begin
-                        state <= LATCH;
+                        for (int i = 0; i < N; i++)
+                            for (int j = 0; j < N; j++)
+                                data_buffer[i*N+j] <= C_out[i][j];
+                        state <= SEND;
                     end
-                end
-                
-                LATCH: begin
-                    // Flatten the 2D array into a 1D buffer so it's easy to iterate over.
-                    // We send Row 0 first, then Row 1, etc.
-                    for (int i = 0; i < N; i++) begin
-                        for (int j = 0; j < N; j++) begin
-                            data_buffer[(i*N) + j] <= C_out[i][j];
-                        end
-                    end
-                    state <= SEND;
                 end
                 
                 SEND: begin
@@ -67,7 +61,7 @@ module matrix_serializer #(
                     if (!tx_busy && !tx_start) begin
                         // Transmission of one byte is done
                         if (byte_index == (N*N - 1)) begin
-                            // All 16 bytes sent!
+                            // All N*N bytes sent!
                             state <= IDLE;
                         end else begin
                             byte_index <= byte_index + 1'b1;

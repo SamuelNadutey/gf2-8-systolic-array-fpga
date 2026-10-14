@@ -46,7 +46,7 @@ module sync_fifo #(
     end
 
     // Pointer Management
-    always_ff @(posedge clk or posedge reset) begin
+    always_ff @(posedge clk) begin
         if (reset) begin
             head <= '0;
             tail <= '0;

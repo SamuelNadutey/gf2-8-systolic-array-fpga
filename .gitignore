@@ -22,3 +22,10 @@ __pycache__/
 .DS_Store
 Thumbs.db
 desktop.ini
+
+# Reproducible build output (publish selected evidence separately)
+build/
+golden_vectors/
+
+# Intermediate review builds are retained locally.
+evidence/implementation/initial/

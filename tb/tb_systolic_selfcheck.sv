@@ -12,19 +12,20 @@ module tb_systolic_selfcheck;
     parameter NUM_VECTORS = 100;
     // Absolute path with FORWARD slashes ('\' is a string escape in SystemVerilog).
     // Vivado/XSim accepts forward slashes on Windows.
-    parameter string GOLDEN_DIR = "C:/Users/samue/OneDrive/Desktop/LASTDANCE/REVIEW_2026-07-17/python_model/golden_vectors";
+    parameter string GOLDEN_DIR = "golden_vectors";
 
     logic clk, reset;
     logic push_A, push_B;
     logic [MATRIX_BITS-1:0] tb_A_data, tb_B_data;
     logic ready, output_valid;
+    logic result_ready = 0;
     logic [WIDTH-1:0] C_out [N-1:0][N-1:0];
 
     systolic_top #( .N(N), .WIDTH(WIDTH) ) dut (
         .clk(clk), .reset(reset),
         .push_A(push_A), .push_B(push_B),
         .matrix_A_in(tb_A_data), .matrix_B_in(tb_B_data),
-        .ready(ready), .C_out(C_out), .output_valid(output_valid)
+        .ready(ready), .result_ready(result_ready), .C_out(C_out), .output_valid(output_valid)
     );
 
     always #5 clk = ~clk;
@@ -36,6 +37,8 @@ module tb_systolic_selfcheck;
     logic [WIDTH-1:0] gold_B [0:NUM_VECTORS*N*N-1];
     logic [WIDTH-1:0] gold_C [0:NUM_VECTORS*N*N-1];
 
+    int cycles = 0;
+    always @(posedge clk) if (reset) cycles = 0; else cycles = cycles + 1;
     int errors = 0;
     int checked = 0;
 
@@ -60,22 +63,28 @@ module tb_systolic_selfcheck;
     endfunction
 
     task automatic run_vector(input int v);
+        int enqueue_cycle;
         wait (ready == 1'b1);
-        @(posedge clk);
+        @(negedge clk);
         tb_A_data = pack_A(v);
         tb_B_data = pack_B(v);
+        enqueue_cycle = cycles + 1;
         push_A = 1;
         push_B = 1;
-        @(posedge clk);
+        @(negedge clk);
         push_A = 0;
         push_B = 0;
 
         wait (output_valid == 1'b1);
-        // Sample on the NEXT edge. If output_valid is asserted a cycle early
-        // (F2) this still reads the settled value, so a mismatch here is a real
-        // arithmetic or accumulator error rather than a sampling artefact.
-        @(posedge clk);
+        if (cycles - enqueue_cycle != 3*N+1)
+            $fatal(1, "Unexpected compute latency N=%0d cycles=%0d", N, cycles-enqueue_cycle);
+        // Sample in the asserted-valid cycle, away from active clock edges.
+        @(negedge clk);
 
+        repeat (3) begin
+            @(negedge clk);
+            if (!output_valid) $fatal(1, "Valid dropped under backpressure");
+        end
         for (int i = 0; i < N; i++) begin
             for (int j = 0; j < N; j++) begin
                 checked++;
@@ -86,6 +95,8 @@ module tb_systolic_selfcheck;
                 end
             end
         end
+        result_ready = 1;
+        @(negedge clk); result_ready = 0;
     endtask
 
     initial begin
@@ -98,20 +109,13 @@ module tb_systolic_selfcheck;
         $readmemh({GOLDEN_DIR, $sformatf("/B_n%0d_tb.hex", N)}, gold_B);
         $readmemh({GOLDEN_DIR, $sformatf("/C_n%0d_tb.hex", N)}, gold_C);
 
-        // Load check: if the vectors didn't load, gold_A[0] is X. Fail loudly
-        // instead of silently propagating X through the whole design.
-        if (^gold_A[0] === 1'bx) begin
-            $display("FATAL: golden vectors not loaded. Check GOLDEN_DIR:");
-            $display("       %s", GOLDEN_DIR);
-            $display("       It must point at the folder CONTAINING A_n4_tb.hex etc.");
-            $finish;
-        end else begin
-            $display("Golden vectors loaded. gold_A[0]=0x%02x gold_C[0]=0x%02x",
-                     gold_A[0], gold_C[0]);
-        end
+        // Reject incomplete or missing input AND expected-output files.
+        for (int k=0; k<NUM_VECTORS*N*N; k++)
+            if ((^gold_A[k] === 1'bx) || (^gold_B[k] === 1'bx) || (^gold_C[k] === 1'bx))
+                $fatal(1, "Golden vectors missing/incomplete at index %0d", k);
 
-        repeat (4) @(posedge clk);
-        reset = 0;
+        repeat (4) @(negedge clk);
+        @(negedge clk); reset = 0;
 
         // Deliberately no reset between vectors: that is what exposes F1.
         for (int v = 0; v < NUM_VECTORS; v++)
@@ -122,15 +126,14 @@ module tb_systolic_selfcheck;
         if (errors == 0)
             $display("  RESULT: PASS");
         else
-            $display("  RESULT: FAIL - %0d mismatches", errors);
+            $fatal(1, "RESULT: FAIL - %0d mismatches", errors);
         $display("========================================\n");
         $finish;
     end
 
     initial begin
         #500000;
-        $display("RESULT: FAIL - timeout");
-        $finish;
+        $fatal(1, "RESULT: FAIL - timeout");
     end
 
 endmodule

@@ -218,13 +218,19 @@ if __name__ == "__main__":
     ap.add_argument("--n", type=int, default=4, help="matrix dimension")
     ap.add_argument("--count", type=int, default=100, help="vectors to emit")
     ap.add_argument("--outdir", default="golden_vectors")
+    ap.add_argument("--replay-historical", action="store_true", help="show the known mismatch from the original saved testbench log")
     args = ap.parse_args()
+    if args.n < 2 or args.count < 1:
+        ap.error("--n must be >=2 and --count must be positive")
 
     print("Self-test against AES MixColumns known-answer vectors:")
     ok = self_test()
-    print("\nReplaying the tb_systolic.sv stimulus:")
-    check_tb_vector()
+    if args.replay_historical:
+        print("\nReplaying the historical tb_systolic.sv stimulus:")
+        check_tb_vector()
     print()
     for n in (args.n,) if args.n != 4 else (4, 8, 16):
         emit_vectors(n, args.count, args.outdir)
     print("\nSelf-test:", "PASS" if ok else "FAIL")
+
+    raise SystemExit(0 if ok else 1)

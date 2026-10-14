@@ -1,0 +1,19 @@
+
+****** xsim v2024.2 (64-bit)
+  **** SW Build 5239630 on Fri Nov 08 22:35:27 MST 2024
+  **** IP Build 5239520 on Sun Nov 10 16:12:51 MST 2024
+  **** SharedData Build 5239561 on Fri Nov 08 14:39:27 MST 2024
+  **** Start of session at: Wed Oct 14 10:35:09 2026
+    ** Copyright 1986-2022 Xilinx, Inc. All Rights Reserved.
+    ** Copyright 2022-2024 Advanced Micro Devices, Inc. All Rights Reserved.
+
+source xsim.dir/missing_n4/xsim_script.tcl
+# xsim {missing_n4} -autoloadwcfg -runall
+Time resolution is 1 ps
+run -all
+WARNING: File golden_vectors/C_n4_tb.hex referenced from process on C:/Users/samue/OneDrive/Desktop/LASTDANCE/gf2-8-systolic-array-fpga/tb/tb_systolic_selfcheck.sv at line 102 cannot be opened for reading. Please ensure that this file is available in the current working directory or parent directory of xsim.dir location specified via -xsimdir switch.
+Fatal: Golden vectors missing/incomplete at index 0
+Time: 0 ps  Iteration: 0  Process: /regression_top/test/Initial102_60  Scope: regression_top.test.Block113_61  File: C:/Users/samue/OneDrive/Desktop/LASTDANCE/gf2-8-systolic-array-fpga/tb/tb_systolic_selfcheck.sv Line: 115
+$finish called at time : 0 fs
+exit
+INFO: [Common 17-206] Exiting xsim at Wed Oct 14 10:35:15 2026...

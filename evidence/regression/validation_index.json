@@ -1,0 +1,155 @@
+{
+  "sources": {
+    "rtl\\fpga_top.sv": "4bbea6ceaa02ef5b03e803a1834aa9d62bda8f3cf9327da419d9791ff104218b",
+    "rtl\\GF_multiplier.sv": "416bd63f2360ad27120fff7c853f87aeaf7b523e34569d6a0764582f44b64ac6",
+    "rtl\\matrix_accumulator.sv": "f155d5db8c179cd1220cc7a9c9462b85ca105d249e81901a17fa80be572b2f94",
+    "rtl\\matrix_serializer.sv": "0e837b1f8865f5913fbcbae398bfbef690ae30a52d6fd73e5c58c7a96125dc8e",
+    "rtl\\PE.sv": "066b4d187fd2e50888eb7863ff5ac2b9cf80c891793867792df3fda30119e93a",
+    "rtl\\shift_reduce.sv": "ce039c3ab1db947a6cdb7fed01644c4bfe62e019301215ad5ffb984f49499c85",
+    "rtl\\shifter.sv": "f0bec00b3ccc422cc746e732ea1a713fcdfa76a8015586e13eec7ad5252fdcdf",
+    "rtl\\skew_logic.sv": "bafe53f441bee0825eec5313c877faf9ed164d5ec93eff51cda65cd52033f705",
+    "rtl\\sync_fifo.sv": "70f0b7153b1b77065c2f23ee85b6b18eea0f6b10895357adbea7bc3cb5f370d3",
+    "rtl\\systolic_array.sv": "15b8a5e8fc2459e90b983a4a6ca2ebbc85b584cc53e47af7420cdbcbb55a3270",
+    "rtl\\systolic_top.sv": "8df4d3c5bc9847b619c331dda4235f81268c3e32dd17bf0b96e803de0d8738ad",
+    "rtl\\uart_rx.sv": "385227551ef43cec25f85fe40c7af1d62acb64f7dd300ebfecb465bac03c8ea1",
+    "rtl\\uart_tx.sv": "10baefdcad24b929b083d5adb7ddab9f662c3aedb7ee1d2b766af856639bad1a",
+    "tb\\tb_accumulator.sv": "d8e5cf4d20da2d3e31736a8ec7b7146c95b44bb8547c5cd6a82f0a3ca2678537",
+    "tb\\tb_fpga_top.sv": "55847c8445a6ae84547265f9831e2de5998944829b3b563ca64d832402e58044",
+    "tb\\tb_result_pipeline.sv": "ec41d5d5358befcf5a4e9d42320a966c7afb3fc9ca2679f69f4b99c4864dea56",
+    "tb\\tb_systolic_selfcheck.sv": "f342435f7a25275464161106138df78d1f7a496122c0a24225e32de536906f48",
+    "python\\gf_reference_model.py": "a9a5ac4bda5ed38f8b6b78af9caeda073a8fb860a235e2ccdc1f39ec5b56a519",
+    "scripts\\run_regression.py": "f79e445834cde3e9d9127fe267ff41c8ae8c64ee12cbb4ff95464d4f152811c9"
+  },
+  "runs": [
+    {
+      "kind": "core",
+      "n": 4,
+      "matrices": 100,
+      "elements": 1600,
+      "expected_failure": false,
+      "log": "core_n4_simulation.txt",
+      "log_sha256": "a94317b90dc3b9fe5327a21975499e2bd9047a6566d1a764510141ff12dc6a92",
+      "passed": true
+    },
+    {
+      "kind": "uart",
+      "n": 4,
+      "matrices": 3,
+      "elements": 48,
+      "expected_failure": false,
+      "log": "uart_n4_simulation.txt",
+      "log_sha256": "e717fdba45f54529418f25df46729abf59e54e99f0a9a6d1fe1fff3ae0928e47",
+      "passed": true
+    },
+    {
+      "kind": "pipeline",
+      "n": 4,
+      "matrices": 3,
+      "elements": 48,
+      "expected_failure": false,
+      "log": "pipeline_n4_simulation.txt",
+      "log_sha256": "75862b8f7f7f2f1d83bc3eceb12c0ed60b57c2134bb3524f2ef1127fec9c4e55",
+      "passed": true
+    },
+    {
+      "kind": "accumulator",
+      "n": 4,
+      "matrices": 2,
+      "elements": 32,
+      "expected_failure": false,
+      "log": "accumulator_n4_simulation.txt",
+      "log_sha256": "4ebda45b397241f9ee6bfc469cc988fb2bb3b099cebe189b56ddea3f42ff26ef",
+      "passed": true
+    },
+    {
+      "kind": "missing",
+      "n": 4,
+      "matrices": 100,
+      "elements": 0,
+      "expected_failure": true,
+      "log": "missing_n4_simulation.txt",
+      "log_sha256": "f694f3919285c4f6cc0bb54c3d3d0425bc01bc79e005a9ab94f0bc8157dee255",
+      "passed": true
+    },
+    {
+      "kind": "core",
+      "n": 8,
+      "matrices": 100,
+      "elements": 6400,
+      "expected_failure": false,
+      "log": "core_n8_simulation.txt",
+      "log_sha256": "234fcf9187e388a40a06d188cb52f77d0139387daef28267405e99e3d7f8a035",
+      "passed": true
+    },
+    {
+      "kind": "uart",
+      "n": 8,
+      "matrices": 3,
+      "elements": 192,
+      "expected_failure": false,
+      "log": "uart_n8_simulation.txt",
+      "log_sha256": "5c68dab0d03e2a471f36f3d434b942be26edbacb47c6eecc36759d005e66a056",
+      "passed": true
+    },
+    {
+      "kind": "pipeline",
+      "n": 8,
+      "matrices": 3,
+      "elements": 192,
+      "expected_failure": false,
+      "log": "pipeline_n8_simulation.txt",
+      "log_sha256": "0e6b35df2f3e86da3fabaf9d1fc3dda4a002976671a6cbd030d7d0636bc2cfcc",
+      "passed": true
+    },
+    {
+      "kind": "accumulator",
+      "n": 8,
+      "matrices": 2,
+      "elements": 128,
+      "expected_failure": false,
+      "log": "accumulator_n8_simulation.txt",
+      "log_sha256": "649c44a66f43ac3e4e0083e274af54351ac7c657df87725596bb003c973653e4",
+      "passed": true
+    },
+    {
+      "kind": "core",
+      "n": 16,
+      "matrices": 100,
+      "elements": 25600,
+      "expected_failure": false,
+      "log": "core_n16_simulation.txt",
+      "log_sha256": "106707f75d707beac4fe2f6445d5053a5d506bcf3101c218260ba9c2ee97d527",
+      "passed": true
+    },
+    {
+      "kind": "uart",
+      "n": 16,
+      "matrices": 3,
+      "elements": 768,
+      "expected_failure": false,
+      "log": "uart_n16_simulation.txt",
+      "log_sha256": "b6c5947c4e12e213861132e38f11da84e1659ae8f33ab356064a4a6bd72797f9",
+      "passed": true
+    },
+    {
+      "kind": "pipeline",
+      "n": 16,
+      "matrices": 3,
+      "elements": 768,
+      "expected_failure": false,
+      "log": "pipeline_n16_simulation.txt",
+      "log_sha256": "17701cae976786151a9667e15d90477df330409253b3923b3f54f9e93da1b876",
+      "passed": true
+    },
+    {
+      "kind": "accumulator",
+      "n": 16,
+      "matrices": 2,
+      "elements": 512,
+      "expected_failure": false,
+      "log": "accumulator_n16_simulation.txt",
+      "log_sha256": "8a3ab97ea31f039baccc21a08a0f240f27bb13d40a365d88b174af165b3ed230",
+      "passed": true
+    }
+  ]
+}
